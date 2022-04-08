@@ -17,6 +17,8 @@ npm install
 
 ## Usage
 
+First of all, we need an API key of the app OPENCAGE and set it in the .env to the environment variable described in the .envExample, it's a free api limited to 2500 requests per day.
+
 For building and parsing to older syntaxis & then running the API.
 
 ```sh
