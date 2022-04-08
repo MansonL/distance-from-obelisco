@@ -78,7 +78,7 @@ export const distanceFromObelisco = async (req: Request, res: Response) => {
         res.status(200).send({
           message:
             responseText +
-            " Puede que la ubicación seleccionada sea incorrecta, se ha utilizado un geocodificador y puede que no sea exacto. Para ello se debería seleccionar la opción entre las encontradas a continuación.",
+            " Puede que la ubicación seleccionada sea incorrecta, se ha utilizado un geocodificador y puede que no sea exacto. Para ello se debería seleccionar la opción que más se adecúe entre las encontradas a continuación.",
           addresses: addressesResponse,
         });
       } else {
@@ -93,24 +93,55 @@ export const distanceFromObelisco = async (req: Request, res: Response) => {
       res.status(400).send("No conozco esa dirección.");
     }
   } catch (error) {
+    // Here should be the logger logging the error
     console.log(JSON.stringify(error, null, "\t"));
   }
 };
 
-// eslint-disable-next-line no-unused-vars
 export const currencyName = async (req: Request, res: Response) => {
   try {
-    const client = await createClientAsync(
-      "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL"
-    );
-    console.log(
-      client.CountryInfoService.CountryInfoServiceSoap.CurrencyName(
-        (err, result) => {
-          console.log(result);
+    const { country } = req.query;
+    if (country && typeof country === "string") {
+      const client = await createClientAsync(
+        "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL"
+      );
+      client.CountryInfoService.CountryInfoServiceSoap.FullCountryInfoAllCountries(
+        (error, result, body) => {
+          if (result) {
+            const countryMatched =
+              result.FullCountryInfoAllCountriesResult.tCountryInfo.filter(
+                (countryInfo) => countryInfo.sName === country
+              );
+            if (countryMatched.length > 0) {
+              const countryCurrencyISOCode = countryMatched[0].sCurrencyISOCode;
+              client.CountryInfoService.CountryInfoServiceSoap.CurrencyName(
+                { sCurrencyISOCode: countryCurrencyISOCode },
+                (error, result) => {
+                  res
+                    .status(200)
+                    .send(
+                      `La moneda del país ingresado es: ${result.CurrencyNameResult}`
+                    );
+                }
+              );
+            } else {
+              res
+                .status(400)
+                .send("No se encontraron países con el nombre ingresado.");
+            }
+          } else {
+            res.status(500).send({
+              message: "Hubo un error solicitando el servicio web SOAP.",
+              error: error,
+            });
+          }
         }
-      )
-    );
+      );
+    } else {
+      res.status(400).send("Inserte un nombre de país válido");
+    }
   } catch (error) {
+    // Here should be the logger logging the error
     console.log(JSON.stringify(error, null, "\t"));
   }
 };
